@@ -47,6 +47,34 @@
         "country": {
           "type": "string",
           "description": "ISO 3166-1 alpha-2 country code — enriched from geo lookup server-side"
+        },
+        "referrer": {
+          "type": "string",
+          "description": "document.referrer at the time of the event"
+        },
+        "pageTitle": {
+          "type": "string",
+          "description": "document.title at the time of the event"
+        },
+        "utmSource": {
+          "type": "string",
+          "description": "UTM source parameter (utm_source)"
+        },
+        "utmMedium": {
+          "type": "string",
+          "description": "UTM medium parameter (utm_medium)"
+        },
+        "utmCampaign": {
+          "type": "string",
+          "description": "UTM campaign parameter (utm_campaign)"
+        },
+        "utmTerm": {
+          "type": "string",
+          "description": "UTM term parameter (utm_term)"
+        },
+        "utmContent": {
+          "type": "string",
+          "description": "UTM content parameter (utm_content)"
         }
       }
     },

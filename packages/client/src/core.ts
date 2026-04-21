@@ -13,6 +13,8 @@ export class NightshiftClient<
   private readonly offline = new OfflineQueue();
   private initialized = false;
 
+  private _pageviewCleanup: (() => void) | null = null;
+
   constructor(config: NightshiftConfig<TEvents>) {
     this.config = {
       appVersion: 'unknown',
@@ -20,6 +22,7 @@ export class NightshiftClient<
       maxBatchSize: 20,
       sampleRate: 1.0,
       debug: false,
+      autoPageview: false,
       ...config,
     };
 
@@ -37,6 +40,10 @@ export class NightshiftClient<
     });
 
     this.initialized = true;
+
+    if (this.config.autoPageview) {
+      this._pageviewCleanup = setupAutoPageview(() => this.track('Page_Viewed' as keyof TEvents & string));
+    }
   }
 
   track<K extends keyof TEvents>(event: K, properties?: TEvents[K]): void {
@@ -78,6 +85,8 @@ export class NightshiftClient<
 
   destroy(): void {
     this.queue.destroy();
+    this._pageviewCleanup?.();
+    this._pageviewCleanup = null;
     this.initialized = false;
   }
 
@@ -98,6 +107,34 @@ export class NightshiftClient<
   private shouldSample(): boolean {
     return this.config.sampleRate >= 1.0 || Math.random() < this.config.sampleRate;
   }
+}
+
+function setupAutoPageview(fire: () => void): () => void {
+  if (typeof window === 'undefined') return () => {};
+
+  fire();
+
+  const onPopState = () => fire();
+  window.addEventListener('popstate', onPopState);
+
+  // Wrap history.pushState / replaceState to catch SPA navigation
+  const originalPush = history.pushState.bind(history);
+  const originalReplace = history.replaceState.bind(history);
+
+  history.pushState = (...args) => {
+    originalPush(...args);
+    fire();
+  };
+  history.replaceState = (...args) => {
+    originalReplace(...args);
+    fire();
+  };
+
+  return () => {
+    window.removeEventListener('popstate', onPopState);
+    history.pushState = originalPush;
+    history.replaceState = originalReplace;
+  };
 }
 
 // Singleton facade

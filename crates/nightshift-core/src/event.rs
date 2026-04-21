@@ -8,7 +8,7 @@ pub enum EventType {
     Error,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EventContext {
     pub viewport: String,
@@ -25,6 +25,20 @@ pub struct EventContext {
     /// ISO 3166-1 alpha-2 country from geo lookup
     #[serde(skip_serializing_if = "Option::is_none")]
     pub country: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub referrer: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub page_title: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub utm_source: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub utm_medium: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub utm_campaign: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub utm_term: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub utm_content: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -167,9 +167,7 @@ mod tests {
                 session_id: "anon_mp1".into(),
                 app_version: "v1".into(),
                 timestamp: 1_000_000,
-                ip: None,
-                user_agent: None,
-                country: None,
+                ..Default::default()
             },
         }
     }

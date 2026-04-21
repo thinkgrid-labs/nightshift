@@ -6,6 +6,13 @@ export interface EventContext {
   sessionId: string;
   appVersion: string;
   timestamp: number;
+  referrer?: string;
+  pageTitle?: string;
+  utmSource?: string;
+  utmMedium?: string;
+  utmCampaign?: string;
+  utmTerm?: string;
+  utmContent?: string;
 }
 
 export interface SerializedError {
@@ -40,6 +47,8 @@ export interface NightshiftConfig<
   /** 0.0–1.0 sample rate. Default: 1.0 */
   sampleRate?: number;
   debug?: boolean;
+  /** Auto-fire a Page_Viewed event on init and on SPA navigation. Default: false */
+  autoPageview?: boolean;
 }
 
 export interface BatchQueueOptions {

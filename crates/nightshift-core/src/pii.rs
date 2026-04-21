@@ -74,8 +74,7 @@ mod tests {
                 app_version: "v1".to_string(),
                 timestamp: 0,
                 ip: Some("1.2.3.4".to_string()),
-                user_agent: None,
-                country: None,
+                ..Default::default()
             },
         }
     }

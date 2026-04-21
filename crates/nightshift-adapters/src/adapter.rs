@@ -15,6 +15,16 @@ pub enum AdapterError {
     Config(String),
 }
 
+impl AdapterError {
+    pub fn is_retryable(&self) -> bool {
+        match self {
+            AdapterError::Network(_) => true,
+            AdapterError::Http { status, .. } => *status >= 500 || *status == 429,
+            _ => false,
+        }
+    }
+}
+
 #[async_trait]
 pub trait Adapter: Send + Sync {
     fn name(&self) -> &'static str;
@@ -24,6 +34,35 @@ pub trait Adapter: Send + Sync {
     }
 
     async fn send(&self, event: &BatchedEvent) -> Result<(), AdapterError>;
+}
+
+async fn send_with_retry(adapter: &dyn Adapter, event: &BatchedEvent) {
+    let mut delay_ms = 100u64;
+    for attempt in 0..3u8 {
+        match adapter.send(event).await {
+            Ok(_) => return,
+            Err(e) if e.is_retryable() && attempt < 2 => {
+                tracing::warn!(
+                    adapter = adapter.name(),
+                    attempt,
+                    error = %e,
+                    "transient adapter error, retrying"
+                );
+                #[cfg(not(target_arch = "wasm32"))]
+                tokio::time::sleep(std::time::Duration::from_millis(delay_ms)).await;
+                delay_ms *= 2;
+            }
+            Err(e) => {
+                tracing::error!(
+                    adapter = adapter.name(),
+                    attempt,
+                    error = %e,
+                    "adapter failed permanently"
+                );
+                return;
+            }
+        }
+    }
 }
 
 pub struct AdapterRouter {
@@ -42,16 +81,11 @@ impl AdapterRouter {
                 self.adapters
                     .iter()
                     .filter(|a| a.accepts(event))
-                    .map(move |a| a.send(event))
+                    .map(move |a| send_with_retry(a.as_ref(), event))
             })
             .collect();
 
-        let results = join_all(futs).await;
-        for result in results {
-            if let Err(e) = result {
-                tracing::error!(error = %e, "adapter fan-out error");
-            }
-        }
+        join_all(futs).await;
     }
 }
 
@@ -91,6 +125,27 @@ mod tests {
         }
     }
 
+    struct FlakyAdapter {
+        calls: Arc<Mutex<u32>>,
+        fail_times: u32,
+    }
+
+    #[async_trait]
+    impl Adapter for FlakyAdapter {
+        fn name(&self) -> &'static str {
+            "flaky"
+        }
+        async fn send(&self, _event: &BatchedEvent) -> Result<(), AdapterError> {
+            let mut count = self.calls.lock().unwrap();
+            *count += 1;
+            if *count <= self.fail_times {
+                Err(AdapterError::Http { status: 503, body: "unavailable".into() })
+            } else {
+                Ok(())
+            }
+        }
+    }
+
     fn make_event(name: &str) -> BatchedEvent {
         BatchedEvent {
             event_type: EventType::Track,
@@ -105,9 +160,7 @@ mod tests {
                 session_id: "anon_test".to_string(),
                 app_version: "v1".to_string(),
                 timestamp: 0,
-                ip: None,
-                user_agent: None,
-                country: None,
+                ..Default::default()
             },
         }
     }
@@ -132,6 +185,35 @@ mod tests {
         ]);
         router.route(vec![make_event("Click")]).await;
         assert_eq!(calls.lock().unwrap().len(), 1);
+    }
+
+    #[tokio::test]
+    async fn retries_on_transient_5xx() {
+        let calls = Arc::new(Mutex::new(0u32));
+        let router = AdapterRouter::new(vec![Box::new(FlakyAdapter {
+            calls: calls.clone(),
+            fail_times: 2,
+        })]);
+        router.route(vec![make_event("Click")]).await;
+        assert_eq!(*calls.lock().unwrap(), 3); // 2 failures + 1 success
+    }
+
+    #[tokio::test]
+    async fn does_not_retry_4xx() {
+        // Use a separate adapter that always returns 400 (non-retryable)
+        struct BadRequestAdapter { calls: Arc<Mutex<u32>> }
+        #[async_trait]
+        impl Adapter for BadRequestAdapter {
+            fn name(&self) -> &'static str { "bad-request" }
+            async fn send(&self, _: &BatchedEvent) -> Result<(), AdapterError> {
+                *self.calls.lock().unwrap() += 1;
+                Err(AdapterError::Http { status: 400, body: "bad request".into() })
+            }
+        }
+        let calls2 = Arc::new(Mutex::new(0u32));
+        let router2 = AdapterRouter::new(vec![Box::new(BadRequestAdapter { calls: calls2.clone() })]);
+        router2.route(vec![make_event("Click")]).await;
+        assert_eq!(*calls2.lock().unwrap(), 1); // only tried once
     }
 
     #[tokio::test]

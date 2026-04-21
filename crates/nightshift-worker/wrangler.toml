@@ -17,6 +17,20 @@ command = "cargo install -q worker-build && worker-build --release"
 # POSTHOG_ENDPOINT (optional, for self-hosted)
 # WEBHOOK_URL
 # WEBHOOK_SECRET (optional)
+# AMPLITUDE_API_KEY
+# SEGMENT_WRITE_KEY
+# FACEBOOK_PIXEL_ID
+# FACEBOOK_ACCESS_TOKEN
+# TIKTOK_PIXEL_CODE
+# TIKTOK_ACCESS_TOKEN
+
+# KV namespace for cross-request dedup — create with: wrangler kv:namespace create DEDUP
+# Then replace the id below with the output from that command.
+# Without this binding, dedup falls back to in-memory (same-batch only).
+[[kv_namespaces]]
+binding = "DEDUP"
+id = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"
+preview_id = "REPLACE_WITH_YOUR_PREVIEW_KV_NAMESPACE_ID"
 
 [vars]
 # Non-secret config (can be overridden per environment)

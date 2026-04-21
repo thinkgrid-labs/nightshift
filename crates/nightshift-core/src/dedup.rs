@@ -71,9 +71,7 @@ mod tests {
                 session_id: session.to_string(),
                 app_version: "v1".to_string(),
                 timestamp: ts_ms,
-                ip: None,
-                user_agent: None,
-                country: None,
+                ..Default::default()
             },
         }
     }

@@ -18,6 +18,16 @@ pub struct EdgeConfig {
     // PostHog
     pub posthog_api_key: Option<String>,
     pub posthog_endpoint: Option<String>,
+    // Amplitude
+    pub amplitude_api_key: Option<String>,
+    // Segment
+    pub segment_write_key: Option<String>,
+    // Facebook Conversions API
+    pub facebook_pixel_id: Option<String>,
+    pub facebook_access_token: Option<String>,
+    // TikTok Events API
+    pub tiktok_pixel_code: Option<String>,
+    pub tiktok_access_token: Option<String>,
     /// Dedup TTL in seconds (default: 30)
     pub dedup_ttl_secs: u64,
     pub debug: bool,
@@ -37,6 +47,12 @@ impl EdgeConfig {
             mixpanel_token: env::var("MIXPANEL_TOKEN").ok(),
             posthog_api_key: env::var("POSTHOG_API_KEY").ok(),
             posthog_endpoint: env::var("POSTHOG_ENDPOINT").ok(),
+            amplitude_api_key: env::var("AMPLITUDE_API_KEY").ok(),
+            segment_write_key: env::var("SEGMENT_WRITE_KEY").ok(),
+            facebook_pixel_id: env::var("FACEBOOK_PIXEL_ID").ok(),
+            facebook_access_token: env::var("FACEBOOK_ACCESS_TOKEN").ok(),
+            tiktok_pixel_code: env::var("TIKTOK_PIXEL_CODE").ok(),
+            tiktok_access_token: env::var("TIKTOK_ACCESS_TOKEN").ok(),
             dedup_ttl_secs: env_u64("DEDUP_TTL_SECS", 30),
             debug: env::var("DEBUG").is_ok(),
         }

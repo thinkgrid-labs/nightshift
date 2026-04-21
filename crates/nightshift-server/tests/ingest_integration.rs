@@ -19,6 +19,12 @@ fn config_with_webhook(url: &str) -> EdgeConfig {
         mixpanel_token: None,
         posthog_api_key: None,
         posthog_endpoint: None,
+        amplitude_api_key: None,
+        segment_write_key: None,
+        facebook_pixel_id: None,
+        facebook_access_token: None,
+        tiktok_pixel_code: None,
+        tiktok_access_token: None,
         dedup_ttl_secs: 30,
         debug: false,
     }

@@ -9,6 +9,13 @@ export interface EventContext {
   ip?: string;
   userAgent?: string;
   country?: string;
+  referrer?: string;
+  pageTitle?: string;
+  utmSource?: string;
+  utmMedium?: string;
+  utmCampaign?: string;
+  utmTerm?: string;
+  utmContent?: string;
 }
 
 export interface SerializedError {

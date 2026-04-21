@@ -1,9 +1,13 @@
 use nightshift_adapters::{
     adapter::AdapterRouter,
+    amplitude::AmplitudeAdapter,
+    facebook::FacebookAdapter,
     ga4::Ga4Adapter,
     mixpanel::MixpanelAdapter,
     posthog::PostHogAdapter,
+    segment::SegmentAdapter,
     sentry::SentryAdapter,
+    tiktok::TikTokAdapter,
     webhook::WebhookAdapter,
 };
 use nightshift_core::{
@@ -13,6 +17,28 @@ use nightshift_core::{
 };
 use std::sync::Mutex;
 use worker::*;
+
+/// Returns true if the key is a duplicate. Uses KV for cross-request persistence when available;
+/// falls back to the in-memory cache for same-batch duplicates only.
+async fn kv_or_mem_dedup(
+    kv: &Option<worker::kv::KvStore>,
+    mem: &mut InMemoryDedupCache,
+    key: &str,
+) -> bool {
+    if let Some(store) = kv {
+        let ns_key = format!("dedup:{key}");
+        match store.get(&ns_key).text().await {
+            Ok(Some(_)) => return true,
+            _ => {
+                if let Ok(builder) = store.put(&ns_key, "1") {
+                    let _ = builder.expiration_ttl(30).execute().await;
+                }
+                return false;
+            }
+        }
+    }
+    mem.is_duplicate(key)
+}
 
 /// Builds the AdapterRouter from Cloudflare Worker environment bindings.
 /// Each adapter is enabled only if its required secrets are present.
@@ -53,6 +79,22 @@ fn build_router(env: &Env) -> AdapterRouter {
             adapter = adapter.with_endpoint(endpoint.to_string());
         }
         adapters.push(Box::new(adapter));
+    }
+
+    if let Ok(key) = env.var("AMPLITUDE_API_KEY") {
+        adapters.push(Box::new(AmplitudeAdapter::new(key.to_string())));
+    }
+
+    if let Ok(key) = env.var("SEGMENT_WRITE_KEY") {
+        adapters.push(Box::new(SegmentAdapter::new(key.to_string())));
+    }
+
+    if let (Ok(pixel_id), Ok(token)) = (env.var("FACEBOOK_PIXEL_ID"), env.var("FACEBOOK_ACCESS_TOKEN")) {
+        adapters.push(Box::new(FacebookAdapter::new(pixel_id.to_string(), token.to_string())));
+    }
+
+    if let (Ok(pixel_code), Ok(token)) = (env.var("TIKTOK_PIXEL_CODE"), env.var("TIKTOK_ACCESS_TOKEN")) {
+        adapters.push(Box::new(TikTokAdapter::new(pixel_code.to_string(), token.to_string())));
     }
 
     AdapterRouter::new(adapters)
@@ -100,22 +142,23 @@ async fn main(mut req: Request, env: Env, _ctx: Context) -> Result<Response> {
         .ok()
         .flatten();
 
-    // Dedup — use a request-scoped cache (Workers are stateless; for true cross-request
-    // dedup deploy a Durable Object or KV, but per-request is still useful for batch duplicates)
-    let mut dedup = InMemoryDedupCache::new(5);
+    // Dedup — prefer KV for cross-request dedup; fall back to in-memory for same-batch duplicates.
+    // Bind a KV namespace named "DEDUP" in wrangler.toml to enable persistent dedup.
+    let kv = env.kv("DEDUP").ok();
+    let mut mem_dedup = InMemoryDedupCache::new(5);
 
-    let events: Vec<_> = body
-        .batch
-        .into_iter()
-        .map(|mut event| {
-            event.context.ip = ip.clone();
-            event.context.user_agent = user_agent.clone();
-            event.context.country = country.clone();
-            event
-        })
-        .filter(|event| !dedup.is_duplicate(&dedup_key(event)))
-        .map(sanitize_event)
-        .collect();
+    let mut events: Vec<_> = Vec::new();
+    for mut event in body.batch.into_iter() {
+        event.context.ip = ip.clone();
+        event.context.user_agent = user_agent.clone();
+        event.context.country = country.clone();
+
+        let key = dedup_key(&event);
+        let is_dup = kv_or_mem_dedup(&kv, &mut mem_dedup, &key).await;
+        if !is_dup {
+            events.push(sanitize_event(event));
+        }
+    }
 
     if !events.is_empty() {
         let router = build_router(&env);

@@ -1,5 +1,8 @@
 # Nightshift
 
+> **Early Development Notice**
+> This project is a work in progress and has not been tested in production. APIs, configuration, and adapter behaviour may change without notice. Use for exploration and feedback — not for production workloads yet.
+
 **The zero-overhead telemetry gateway for modern web applications.**
 
 > Your frontend works the day shift. Nightshift handles the rest.

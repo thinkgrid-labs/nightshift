@@ -209,9 +209,7 @@ mod tests {
                 session_id: "anon_x".into(),
                 app_version: "v1".into(),
                 timestamp: 0,
-                ip: None,
-                user_agent: None,
-                country: None,
+                ..Default::default()
             },
         };
         assert!(adapter.accepts(&make(EventType::Track)));

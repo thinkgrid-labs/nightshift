@@ -6,10 +6,14 @@ use std::sync::Arc;
 use axum::{Router, routing::get, routing::post};
 use nightshift_adapters::{
     adapter::AdapterRouter,
+    amplitude::AmplitudeAdapter,
+    facebook::FacebookAdapter,
     ga4::Ga4Adapter,
     mixpanel::MixpanelAdapter,
     posthog::PostHogAdapter,
+    segment::SegmentAdapter,
     sentry::SentryAdapter,
+    tiktok::TikTokAdapter,
     webhook::WebhookAdapter,
 };
 use nightshift_core::dedup::InMemoryDedupCache;
@@ -70,6 +74,26 @@ pub fn build_app(config: EdgeConfig) -> Router {
         }
         adapters.push(Box::new(adapter));
         info!("PostHog adapter enabled");
+    }
+
+    if let Some(key) = &config.amplitude_api_key {
+        adapters.push(Box::new(AmplitudeAdapter::new(key)));
+        info!("Amplitude adapter enabled");
+    }
+
+    if let Some(key) = &config.segment_write_key {
+        adapters.push(Box::new(SegmentAdapter::new(key)));
+        info!("Segment adapter enabled");
+    }
+
+    if let (Some(pixel_id), Some(token)) = (&config.facebook_pixel_id, &config.facebook_access_token) {
+        adapters.push(Box::new(FacebookAdapter::new(pixel_id, token)));
+        info!("Facebook Conversions API adapter enabled");
+    }
+
+    if let (Some(pixel_code), Some(token)) = (&config.tiktok_pixel_code, &config.tiktok_access_token) {
+        adapters.push(Box::new(TikTokAdapter::new(pixel_code, token)));
+        info!("TikTok Events API adapter enabled");
     }
 
     let state = Arc::new(AppState {
