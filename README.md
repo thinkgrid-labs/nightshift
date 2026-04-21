@@ -69,8 +69,10 @@ Browser                    Edge                    Vendors
 | Mixpanel | track, identify, error | ✅ |
 | PostHog | track, identify, error | ✅ |
 | Webhook | all (generic JSON POST) | ✅ |
-| Amplitude | — | Planned |
-| Segment | — | Planned |
+| Amplitude | track, identify, error | ✅ |
+| Segment | track, identify, error | ✅ |
+| Facebook Conversions API | track, error | ✅ |
+| TikTok Events API | track, error | ✅ |
 | FullStory | identify, custom events¹ | Planned |
 
 ¹ FullStory's session replay requires its browser SDK to run in-page (DOM capture can't be proxied). The Nightshift FullStory adapter covers the server-side portion: forwarding `identify` calls to the [FullStory Identity API](https://developer.fullstory.com/server/v2/users/set-user-properties/) and custom events to the [Events API](https://developer.fullstory.com/server/v2/events/create-events/) for cross-device user stitching.
@@ -259,7 +261,7 @@ pnpm --filter nextjs-demo dev
 
 Adapters are the most impactful contribution. See `crates/nightshift-adapters/src/adapter.rs` for the `Adapter` trait — implementing a new vendor is ~80 lines of Rust.
 
-Planned: Amplitude, Segment HTTP API, Plausible, FullStory.
+Planned: Plausible, FullStory (server-side identify + custom events only — session replay requires in-browser DOM capture and cannot be proxied).
 
 ---
 
