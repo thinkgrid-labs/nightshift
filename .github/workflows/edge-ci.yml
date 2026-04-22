@@ -7,11 +7,13 @@ on:
       - 'crates/**'
       - 'Cargo.toml'
       - 'Cargo.lock'
+      - '.github/workflows/edge-ci.yml'
   pull_request:
     paths:
       - 'crates/**'
       - 'Cargo.toml'
       - 'Cargo.lock'
+      - '.github/workflows/edge-ci.yml'
 
 env:
   CARGO_TERM_COLOR: always

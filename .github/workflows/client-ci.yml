@@ -5,9 +5,15 @@ on:
     branches: [main,dev]
     paths:
       - 'packages/**'
+      - '.github/workflows/client-ci.yml'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
   pull_request:
     paths:
       - 'packages/**'
+      - '.github/workflows/client-ci.yml'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
 
 jobs:
   test:
